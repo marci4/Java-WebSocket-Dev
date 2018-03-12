@@ -38,7 +38,6 @@ import org.java_websocket.framing.Framedata;
 import org.java_websocket.framing.Framedata.Opcode;
 import org.java_websocket.framing.PingFrame;
 import org.java_websocket.handshake.*;
-import org.java_websocket.server.WebSocketServer.WebSocketWorker;
 import org.java_websocket.util.Charsetfunctions;
 
 import java.io.IOException;
@@ -85,10 +84,7 @@ public class WebSocketImpl implements WebSocket {
 	 * the possibly wrapped channel object whose selection is controlled by {@link #key}
 	 */
 	public ByteChannel channel;
-	/**
-	 * Helper variable meant to store the thread which ( exclusively ) triggers this objects decode method.
-	 **/
-	public volatile WebSocketWorker workerThread; // TODO reset worker?
+
 	/**
 	 * When true no further frames may be submitted to be sent
 	 */
