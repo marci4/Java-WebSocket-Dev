@@ -106,6 +106,7 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 	 * Creates a WebSocketServer that will attempt to bind/listen on the given <var>address</var>.
 	 *
 	 * @param address The address to listen to
+	 * @see #WebSocketServer(InetSocketAddress, int, List, Collection) more details here
 	 */
 	public WebSocketServer( InetSocketAddress address ) {
 		this( address, DECODERS, null );
@@ -252,7 +253,9 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 	 * @since 1.3.8
 	 */
 	public Collection<WebSocket> getConnections() {
-		return Collections.unmodifiableCollection( connections );
+		synchronized(connections) {
+			return Collections.unmodifiableCollection( new ArrayList<WebSocket>( connections ));
+		}
 	}
 
 	public InetSocketAddress getAddress() {
@@ -823,6 +826,7 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 		@Override
 		public void run() {
 			try {
+				//TODO Keep blocking queue for order
 				ws.decode( buf );
 			} catch ( RuntimeException e ) {
 				handleFatal( ws, e );
