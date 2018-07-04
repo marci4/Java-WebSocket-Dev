@@ -39,6 +39,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -93,7 +94,13 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 
 	protected List<WebSocketWorker> decoders;
 
-	private List<WebSocketImpl> iqueue;
+	private ConcurrentLinkedQueue<ChangeRequest> pendingChanges = new ConcurrentLinkedQueue<ChangeRequest>();
+
+	private ConcurrentLinkedQueue<SelectionKey> pendingData = new ConcurrentLinkedQueue<SelectionKey>(  );
+
+	private final Object pendingDataLock = new Object();
+	private final Object pendingChangesLock = new Object();
+
 	private BlockingQueue<ByteBuffer> buffers;
 	private int queueinvokes = 0;
 	private final AtomicInteger queuesize = new AtomicInteger( 0 );
@@ -195,7 +202,6 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 		this.connections = connectionscontainer;
 		setTcpNoDelay(false);
 		setReuseAddr(false);
-		iqueue = new LinkedList<WebSocketImpl>();
 
 		decoders = new ArrayList<WebSocketWorker>( decodercount );
 		buffers = new LinkedBlockingQueue<ByteBuffer>();
@@ -350,105 +356,39 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 					if (keyCount == 0 && isclosed.get()) {
 						iShutdownCount--;
 					}
-					Set<SelectionKey> keys = selector.selectedKeys();
-					Iterator<SelectionKey> i = keys.iterator();
-
-					while ( i.hasNext() ) {
-						key = i.next();
-						conn = null;
-						
-						if( !key.isValid() ) {
-							// Object o = key.attachment();
-							continue;
-						}
-
-						if( key.isAcceptable() ) {
-							if( !onConnect( key ) ) {
-								key.cancel();
-								continue;
-							}
-
-							SocketChannel channel = server.accept();
-							if(channel==null){
-								continue;
-							}
-							channel.configureBlocking( false );
-							Socket socket = channel.socket();
-							socket.setTcpNoDelay( isTcpNoDelay() );
-							socket.setKeepAlive( true );
-							WebSocketImpl w = wsf.createWebSocket( this, drafts );
-							w.key = channel.register( selector, SelectionKey.OP_READ, w );
-							try {
-								w.channel = wsf.wrapChannel( channel, w.key );
-								i.remove();
-								allocateBuffers( w );
-								continue;
-							} catch (IOException ex) {
-								if( w.key != null )
-									w.key.cancel();
-
-								handleIOException( w.key, null, ex );
-							}
-							continue;
-						}
-
-						if( key.isReadable() ) {
-							conn = (WebSocketImpl) key.attachment();
-							ByteBuffer buf = takeBuffer();
-							if(conn.channel == null){
-								if( key != null )
-									key.cancel();
-								
-								handleIOException( key, conn, new IOException() );
-								continue;
-							}
-							try {
-								if( SocketChannelIOHelper.read( buf, conn, conn.channel ) ) {
-									if( buf.hasRemaining() ) {
-										conn.inQueue.put( buf );
-										queue( conn );
-										i.remove();
-										if( conn.channel instanceof WrappedByteChannel ) {
-											if( ( (WrappedByteChannel) conn.channel ).isNeedRead() ) {
-												iqueue.add( conn );
-											}
-										}
-									} else
-										pushBuffer( buf );
-								} else {
-									pushBuffer( buf );
-								}
-							} catch ( IOException e ) {
-								pushBuffer( buf );
-								throw e;
+					// Process any pending changes
+					synchronized (pendingChangesLock) {
+						for( ChangeRequest change : this.pendingChanges ) {
+							switch(change.type) {
+								case ChangeRequest.CHANGEOPS:
+									key = change.socket.keyFor( this.selector );
+									key.interestOps( change.ops );
 							}
 						}
-						if( key.isWritable() ) {
-							conn = (WebSocketImpl) key.attachment();
-							if( SocketChannelIOHelper.batch( conn, conn.channel ) ) {
-								if( key.isValid() )
-									key.interestOps( SelectionKey.OP_READ );
-							}
-						}
+						this.pendingChanges.clear();
 					}
-					while ( !iqueue.isEmpty() ) {
-						conn = iqueue.remove( 0 );
-						WrappedByteChannel c = ( (WrappedByteChannel) conn.channel );
-						ByteBuffer buf = takeBuffer();
-						try {
-							if( SocketChannelIOHelper.readMore( buf, conn, c ) )
-								iqueue.add( conn );
-							if( buf.hasRemaining() ) {
-								conn.inQueue.put( buf );
-								queue( conn );
-							} else {
-								pushBuffer( buf );
-							}
-						} catch ( IOException e ) {
-							pushBuffer( buf );
-							throw e;
+
+					// Wait for an event one of the registered channels
+					this.selector.select();
+
+					// Iterate over the set of keys for which events are available
+					Iterator<SelectionKey> selectedKeys = this.selector.selectedKeys().iterator();
+					while (selectedKeys.hasNext()) {
+						key = selectedKeys.next();
+						selectedKeys.remove();
+
+						if (!key.isValid()) {
+							continue;
 						}
 
+						// Check what event is available and deal with it
+						if (key.isAcceptable()) {
+							this.accept(key);
+						} else if (key.isReadable()) {
+							this.read(key);
+						} else if (key.isWritable()) {
+							this.write(key);
+						}
 					}
 				} catch ( CancelledKeyException e ) {
 					// an other thread may cancel the key
@@ -458,8 +398,6 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 					if( key != null )
 						key.cancel();
 					handleIOException( key, conn, ex );
-				} catch ( InterruptedException e ) {
-					return;// FIXME controlled shutdown (e.g. take care of buffermanagement)
 				}
 			}
 
@@ -489,6 +427,89 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 			}
 		}
 	}
+
+	private void accept(SelectionKey key) throws IOException {
+		// For an accept to be pending the channel must be a server socket channel.
+		ServerSocketChannel serverSocketChannel = (ServerSocketChannel) key.channel();
+
+		// Accept the connection and make it non-blocking
+		SocketChannel socketChannel = serverSocketChannel.accept();
+		Socket socket = socketChannel.socket();
+		socketChannel.configureBlocking(false);
+
+		// Register the new SocketChannel with our Selector, indicating
+		// we'd like to be notified when there's data waiting to be read
+		socketChannel.register(this.selector, SelectionKey.OP_READ);
+	}
+
+	private void read(SelectionKey key) throws IOException {
+		SocketChannel socketChannel = (SocketChannel) key.channel();
+
+		// Attempt to read off the channel
+		ByteBuffer buf = createBuffer();
+		int numRead;
+		try {
+			numRead = socketChannel.read(buf);
+		} catch (IOException e) {
+			// The remote forcibly closed the connection, cancel
+			// the selection key and close the channel.
+			key.cancel();
+			socketChannel.close();
+			return;
+		}
+
+		if (numRead == -1) {
+			// Remote entity shut the socket down cleanly. Do the
+			// same from our end and cancel the channel.
+			key.channel().close();
+			key.cancel();
+			return;
+		}
+
+		// Hand the data off to our worker thread
+		this.worker.processData(this, socketChannel, buf.array(), numRead);
+	}
+
+	private void write(SelectionKey key) throws IOException {
+		SocketChannel socketChannel = (SocketChannel) key.channel();
+
+		synchronized (pendingDataLock) {
+			List queue = (List) this.pendingData.get(socketChannel);
+
+			// Write until there's not more data ...
+			while (!queue.isEmpty()) {
+				ByteBuffer buf = (ByteBuffer) queue.get(0);
+				socketChannel.write(buf);
+				if (buf.remaining() > 0) {
+					// ... or the socket's buffer fills up
+					break;
+				}
+				queue.remove(0);
+			}
+
+			if (queue.isEmpty()) {
+				// We wrote away all data, so we're no longer interested
+				// in writing on this socket. Switch back to waiting for
+				// data.
+				key.interestOps(SelectionKey.OP_READ);
+			}
+		}
+	}
+	class ChangeRequest {
+		public static final int REGISTER = 1;
+		public static final int CHANGEOPS = 2;
+
+		public SelectableChannel socket;
+		public int type;
+		public int ops;
+
+		public ChangeRequest( SelectableChannel socket, int type, int ops) {
+			this.socket = socket;
+			this.type = type;
+			this.ops = ops;
+		}
+	}
+
 	protected void allocateBuffers( WebSocket c ) throws InterruptedException {
 		if( queuesize.get() >= 2 * decoders.size() + 1 ) {
 			return;
@@ -661,13 +682,16 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 	@Override
 	public final void onWriteDemand( WebSocket w ) {
 		WebSocketImpl conn = (WebSocketImpl) w;
-		try {
-			conn.key.interestOps( SelectionKey.OP_READ | SelectionKey.OP_WRITE );
-		} catch ( CancelledKeyException e ) {
-			// the thread which cancels key is responsible for possible cleanup
-			conn.outQueue.clear();
+		synchronized (pendingChangesLock) {
+			// Indicate we want the interest ops set changed
+			this.pendingChanges.add(new ChangeRequest(conn.key.channel(), ChangeRequest.CHANGEOPS, SelectionKey.OP_WRITE));
+
+			// And queue the data we want written
+			synchronized (pendingDataLock) {
+				this.pendingData.add( conn.key );
+			}
 		}
-		selector.wakeup();
+		this.selector.wakeup();
 	}
 
 	@Override

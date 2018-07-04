@@ -26,6 +26,7 @@
 package org.java_websocket.server;
 
 import org.java_websocket.SSLSocketChannel2;
+import tlschannel.ServerTlsChannel;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
@@ -86,7 +87,7 @@ public class CustomSSLWebSocketServerFactory extends DefaultSSLWebSocketServerFa
             e.setEnabledCipherSuites(enabledCiphersuites);
         }
         e.setUseClientMode(false);
-        return new SSLSocketChannel2(channel, e, exec, key);
+        return ServerTlsChannel.newBuilder( channel, sslcontext ).build();
     }
 
 }

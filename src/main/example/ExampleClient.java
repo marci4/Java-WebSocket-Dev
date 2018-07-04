@@ -27,6 +27,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
 
+import org.java_websocket.WebSocketImpl;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft;
 import org.java_websocket.drafts.Draft_6455;
@@ -51,13 +52,16 @@ public class ExampleClient extends WebSocketClient {
 	@Override
 	public void onOpen( ServerHandshake handshakedata ) {
 		send("Hello, it is me. Mario :)");
+		setConnectionLostTimeout( 0 );
 		System.out.println( "opened connection" );
+		setConnectionLostTimeout( 5 );
 		// if you plan to refuse connection based on ip or httpfields overload: onWebsocketHandshakeReceivedAsClient
 	}
 
 	@Override
 	public void onMessage( String message ) {
 		System.out.println( "received: " + message );
+		setConnectionLostTimeout( 10 );
 	}
 
 	@Override
@@ -73,7 +77,9 @@ public class ExampleClient extends WebSocketClient {
 	}
 
 	public static void main( String[] args ) throws URISyntaxException {
-		ExampleClient c = new ExampleClient( new URI( "ws://localhost:8887" )); // more about drafts here: http://github.com/TooTallNate/Java-WebSocket/wiki/Drafts
+		WebSocketImpl.DEBUG = true;
+		ExampleClient c = new ExampleClient( new URI( "ws+unix:///absolule/path/to/uds_socket:/pathname?query_params" )); // more about drafts here: http://github.com/TooTallNate/Java-WebSocket/wiki/Drafts
+		c.setConnectionLostTimeout( 1 );
 		c.connect();
 	}
 

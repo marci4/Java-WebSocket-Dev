@@ -358,10 +358,8 @@ public abstract class WebSocketClient extends AbstractWebSocket implements Runna
 			if( !socket.isBound() ) {
 				socket.connect( new InetSocketAddress( uri.getHost(), getPort() ), connectTimeout );
 			}
-
 			// if the socket is set by others we don't apply any TLS wrapper
 			if (isNewSocket && "wss".equals( uri.getScheme())) {
-
 				SSLContext sslContext = SSLContext.getInstance("TLS");
 				sslContext.init(null, null, null);
 				SSLSocketFactory factory = sslContext.getSocketFactory();

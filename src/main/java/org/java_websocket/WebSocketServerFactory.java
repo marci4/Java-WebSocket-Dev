@@ -26,6 +26,7 @@
 package org.java_websocket;
 
 import org.java_websocket.drafts.Draft;
+import org.java_websocket.server.WebSocketServer;
 
 import java.io.IOException;
 import java.nio.channels.ByteChannel;
