@@ -248,8 +248,10 @@ public abstract class WebSocketClient extends AbstractWebSocket implements Runna
 	 */
 	private void reset() {
 		Thread current = Thread.currentThread();
-		if (current == writeThread || current == connectReadThread) {
-			throw new IllegalStateException("You cannot initialize a reconnect out of the websocket thread. Use reconnect in another thread to insure a successful cleanup.");
+		synchronized (threadObject) {
+			if (current == writeThread || current == connectReadThread) {
+				throw new IllegalStateException("You cannot initialize a reconnect out of the websocket thread. Use reconnect in another thread to insure a successful cleanup.");
+			}
 		}
 		try {
 			closeBlocking();
@@ -262,19 +264,20 @@ public abstract class WebSocketClient extends AbstractWebSocket implements Runna
 					this.connectReadThread.interrupt();
 					this.connectReadThread = null;
 				}
-			}
-			this.draft.reset();
-			if( this.socket != null ) {
-				this.socket.close();
-				this.socket = null;
+				this.draft.reset();
+				if( this.socket != null ) {
+					this.socket.close();
+					this.socket = null;
+				}
+				connectLatch = new CountDownLatch( 1 );
+				System.out.println("Count reset!");
+				closeLatch = new CountDownLatch( 1 );
 			}
 		} catch ( Exception e ) {
 			onError( e );
 			engine.closeConnection( CloseFrame.ABNORMAL_CLOSE, e.getMessage() );
 			return;
 		}
-		connectLatch = new CountDownLatch( 1 );
-		closeLatch = new CountDownLatch( 1 );
 		this.engine = new WebSocketImpl( this, this.draft );
 	}
 
@@ -333,6 +336,7 @@ public abstract class WebSocketClient extends AbstractWebSocket implements Runna
 	 */
 	public void closeBlocking() throws InterruptedException {
 		close();
+		System.out.println("Count await!");
 		closeLatch.await();
 	}
 
@@ -418,6 +422,7 @@ public abstract class WebSocketClient extends AbstractWebSocket implements Runna
 			writeThread = new Thread(new WebsocketWriteThread());
 			writeThread.start();
 		}
+
 		byte[] rawbuffer = new byte[ WebSocketImpl.RCVBUF ];
 		int readBytes;
 
@@ -508,11 +513,6 @@ public abstract class WebSocketClient extends AbstractWebSocket implements Runna
 		onMessage( blob );
 	}
 
-	@Override
-	public void onWebsocketMessageFragment( WebSocket conn, Framedata frame ) {
-		onFragment( frame );
-	}
-
 	/**
 	 * Calls subclass' implementation of <var>onOpen</var>.
 	 */
@@ -520,7 +520,10 @@ public abstract class WebSocketClient extends AbstractWebSocket implements Runna
 	public final void onWebsocketOpen( WebSocket conn, Handshakedata handshake ) {
 		startConnectionLostTimer();
 		onOpen( (ServerHandshake) handshake );
-		connectLatch.countDown();
+		synchronized (threadObject) {
+			connectLatch.countDown();
+			System.out.println("Count down open!");
+		}
 	}
 
 	/**
@@ -529,11 +532,14 @@ public abstract class WebSocketClient extends AbstractWebSocket implements Runna
 	@Override
 	public final void onWebsocketClose( WebSocket conn, int code, String reason, boolean remote ) {
 		stopConnectionLostTimer();
-		if( writeThread != null )
-			writeThread.interrupt();
-		onClose( code, reason, remote );
-		connectLatch.countDown();
-		closeLatch.countDown();
+		synchronized (threadObject) {
+			if (writeThread != null)
+				writeThread.interrupt();
+			onClose( code, reason, remote );
+			System.out.println("Count down!");
+			connectLatch.countDown();
+			closeLatch.countDown();
+		}
 	}
 
 	/**
