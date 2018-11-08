@@ -424,7 +424,7 @@ public abstract class WebSocketClient extends AbstractWebSocket implements Runna
 			while ( !isClosing() && !isClosed() && ( readBytes = istream.read( rawbuffer ) ) != -1 ) {
 				engine.decode( ByteBuffer.wrap( rawbuffer, 0, readBytes ) );
 			}
-			engine.eot();
+			eot();
 		} catch ( IOException e ) {
 			handleIOException(e);
 		} catch ( RuntimeException e ) {
@@ -433,6 +433,17 @@ public abstract class WebSocketClient extends AbstractWebSocket implements Runna
 			engine.closeConnection( CloseFrame.ABNORMAL_CLOSE, e.getMessage() );
 		}
 		connectReadThread = null;
+	}
+
+	/**
+	 * Clean up the engine and everything else
+	 */
+	private void eot() {
+		engine.eot();
+		if( writeThread != null ) {
+			this.writeThread.interrupt();
+			this.writeThread = null;
+		}
 	}
 
 	/**
