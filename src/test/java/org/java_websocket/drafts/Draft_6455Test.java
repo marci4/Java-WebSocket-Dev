@@ -192,19 +192,19 @@ public class Draft_6455Test {
 	@Test
 	public void testToString() throws Exception {
 		Draft_6455 draft_6455 = new Draft_6455();
-		assertEquals( "Draft_6455 extension: DefaultExtension max frame size: 2147483647", draft_6455.toString() );
+		assertEquals( "Draft_6455 extension: DefaultExtension protocol:  max frame size: 2147483647", draft_6455.toString() );
 		draft_6455.acceptHandshakeAsServer( handshakedataProtocolExtension );
-		assertEquals( "Draft_6455 extension: DefaultExtension max frame size: 2147483647", draft_6455.toString() );
+		assertEquals( "Draft_6455 extension: DefaultExtension protocol: max frame size: 2147483647", draft_6455.toString() );
 		draft_6455 = new Draft_6455( Collections.<IExtension>emptyList(), Collections.<IProtocol>singletonList( new Protocol( "chat" ) ) );
-		assertEquals( "Draft_6455 extension: DefaultExtension max frame size: 2147483647", draft_6455.toString() );
+		assertEquals( "Draft_6455 extension: DefaultExtension protocol: max frame size: 2147483647", draft_6455.toString() );
 		draft_6455.acceptHandshakeAsServer( handshakedataProtocolExtension );
 		assertEquals( "Draft_6455 extension: DefaultExtension protocol: chat max frame size: 2147483647", draft_6455.toString() );
 		draft_6455 = new Draft_6455( Collections.<IExtension>singletonList( new TestExtension() ), Collections.<IProtocol>singletonList( new Protocol( "chat" ) ) );
-		assertEquals( "Draft_6455 extension: DefaultExtension max frame size: 2147483647", draft_6455.toString() );
+		assertEquals( "Draft_6455 extension: DefaultExtension protocol: max frame size: 2147483647", draft_6455.toString() );
 		draft_6455.acceptHandshakeAsServer( handshakedataProtocolExtension );
 		assertEquals( "Draft_6455 extension: TestExtension protocol: chat max frame size: 2147483647", draft_6455.toString() );
 		draft_6455 = new Draft_6455( Collections.<IExtension>emptyList(), Collections.<IProtocol>singletonList( new Protocol( "chat" ) ) ,10);
-		assertEquals( "Draft_6455 extension: DefaultExtension max frame size: 10", draft_6455.toString() );
+		assertEquals( "Draft_6455 extension: DefaultExtension protocol: max frame size: 10", draft_6455.toString() );
 		draft_6455.acceptHandshakeAsServer( handshakedataProtocolExtension );
 		assertEquals( "Draft_6455 extension: DefaultExtension protocol: chat max frame size: 10", draft_6455.toString() );
 	}

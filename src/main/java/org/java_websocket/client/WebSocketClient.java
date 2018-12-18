@@ -47,6 +47,7 @@ import javax.net.ssl.SSLSocketFactory;
 import org.java_websocket.AbstractWebSocket;
 import org.java_websocket.WebSocket;
 import org.java_websocket.WebSocketImpl;
+import org.java_websocket.core.ReadyStateManager;
 import org.java_websocket.drafts.Draft;
 import org.java_websocket.drafts.Draft_6455;
 import org.java_websocket.enums.Opcode;
@@ -284,11 +285,15 @@ public abstract class WebSocketClient extends AbstractWebSocket implements Runna
 	 * Initiates the websocket connection. This method does not block.
 	 */
 	public void connect() {
-		if( connectReadThread != null )
-			throw new IllegalStateException( "WebSocketClient objects are not reuseable" );
-		connectReadThread = new Thread( this );
-		connectReadThread.setName( "WebSocketConnectReadThread-" + connectReadThread.getId() );
-		connectReadThread.start();
+		synchronized (this.getReadyStateManager()) {
+			if (this.getReadyStateManager().getState() == ReadyState.NOT_YET_CONNECTED) {
+				if (connectReadThread != null)
+					throw new IllegalStateException("WebSocketClient objects are not reuseable");
+				connectReadThread = new Thread(this);
+				connectReadThread.setName("WebSocketConnectReadThread-" + connectReadThread.getId());
+				connectReadThread.start();
+			}
+		}
 	}
 
 	/**
@@ -377,45 +382,56 @@ public abstract class WebSocketClient extends AbstractWebSocket implements Runna
 	public void run() {
 		InputStream istream;
 		try {
-			boolean isNewSocket = false;
-			if (socketFactory != null) {
-				socket = socketFactory.createSocket();
-			} else if( socket == null ) {
-				socket = new Socket( proxy );
-				isNewSocket = true;
+			synchronized (this.getReadyStateManager()) {
+				if (this.getReadyStateManager().getState() == ReadyState.NOT_YET_CONNECTED) {
+					boolean isNewSocket = false;
+					if (socketFactory != null) {
+						socket = socketFactory.createSocket();
+					} else if (socket == null) {
+						socket = new Socket(proxy);
+						isNewSocket = true;
 
-			} else if( socket.isClosed() ) {
-				throw new IOException();
+					} else if (socket.isClosed()) {
+						throw new IOException();
+					}
+
+					socket.setTcpNoDelay(isTcpNoDelay());
+					socket.setReuseAddress(isReuseAddr());
+
+					if (!socket.isBound()) {
+						socket.connect(new InetSocketAddress(uri.getHost(), getPort()), connectTimeout);
+					}
+
+					// if the socket is set by others we don't apply any TLS wrapper
+					if (isNewSocket && "wss".equals(uri.getScheme())) {
+
+						SSLContext sslContext = SSLContext.getInstance("TLSv1.2");
+						sslContext.init(null, null, null);
+						SSLSocketFactory factory = sslContext.getSocketFactory();
+						socket = factory.createSocket(socket, uri.getHost(), getPort(), true);
+					}
+
+					istream = socket.getInputStream();
+					ostream = socket.getOutputStream();
+
+					sendHandshake();
+				} else {
+					return;
+				}
 			}
-
-			socket.setTcpNoDelay( isTcpNoDelay() );
-			socket.setReuseAddress( isReuseAddr() );
-
-			if( !socket.isBound() ) {
-				socket.connect( new InetSocketAddress( uri.getHost(), getPort() ), connectTimeout );
-			}
-
-			// if the socket is set by others we don't apply any TLS wrapper
-			if (isNewSocket && "wss".equals( uri.getScheme())) {
-
-				SSLContext sslContext = SSLContext.getInstance("TLSv1.2");
-				sslContext.init(null, null, null);
-				SSLSocketFactory factory = sslContext.getSocketFactory();
-				socket = factory.createSocket(socket, uri.getHost(), getPort(), true);
-			}
-
-			istream = socket.getInputStream();
-			ostream = socket.getOutputStream();
-
-			sendHandshake();
 		} catch ( /*IOException | SecurityException | UnresolvedAddressException | InvalidHandshakeException | ClosedByInterruptException | SocketTimeoutException */Exception e ) {
 			onWebsocketError( engine, e );
 			engine.closeConnection( CloseFrame.NEVER_CONNECTED, e.getMessage() );
 			return;
 		}
-
-		writeThread = new Thread( new WebsocketWriteThread(this) );
-		writeThread.start();
+		synchronized (this.getReadyStateManager()) {
+			if (this.getReadyStateManager().getState() == ReadyState.NOT_YET_CONNECTED) {
+				writeThread = new Thread(new WebsocketWriteThread(this));
+				writeThread.start();
+			} else {
+				return;
+			}
+		}
 
 		byte[] rawbuffer = new byte[ WebSocketImpl.RCVBUF ];
 		int readBytes;
@@ -813,4 +829,9 @@ public abstract class WebSocketClient extends AbstractWebSocket implements Runna
 		}
 		engine.eot();
 	}
+
+	private ReadyStateManager getReadyStateManager() {
+		return engine.getReadyStateManager();
+	}
 }
+
