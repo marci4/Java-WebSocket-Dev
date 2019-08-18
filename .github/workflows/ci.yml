@@ -5,7 +5,7 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-    - name: Build
+    name: Build
     steps:
     - uses: actions/checkout@v1
     - name: Set up JDK 1.8
@@ -16,7 +16,7 @@ jobs:
       
   test:
     runs-on: ubuntu-latest
-    - name: Test
+    name: Test
     steps:
     - uses: actions/checkout@v1
     - name: Set up JDK 1.8
@@ -27,8 +27,8 @@ jobs:
       
 
   sonarCloudTrigger:
-  - name: SonarCloud Scan
     runs-on: ubuntu-latest
+    name: SonarCloud Scan
     steps:
     - uses: actions/checkout@v1
     - name: Set up JDK 1.8
