@@ -25,7 +25,6 @@
 
 package org.java_websocket.drafts;
 
-import org.java_websocket.enums.CloseHandshakeType;
 import org.java_websocket.enums.HandshakeState;
 import org.java_websocket.extensions.DefaultExtension;
 import org.java_websocket.extensions.IExtension;
@@ -181,12 +180,6 @@ public class Draft_6455Test {
 		assertNull( draft_6455.getProtocol() );
 		assertEquals( extensionList, draft_6455.getKnownExtensions() );
 		assertEquals( protocolList, draft_6455.getKnownProtocols() );
-	}
-
-	@Test
-	public void testGetCloseHandshakeType() throws Exception {
-		Draft_6455 draft_6455 = new Draft_6455();
-		assertEquals( CloseHandshakeType.TWOWAY, draft_6455.getCloseHandshakeType() );
 	}
 
 	@Test

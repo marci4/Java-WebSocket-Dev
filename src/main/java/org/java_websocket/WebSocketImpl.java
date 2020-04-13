@@ -439,27 +439,25 @@ public class WebSocketImpl implements WebSocket {
 					flushAndClose( code, message, false );
 					return;
 				}
-				if( draft.getCloseHandshakeType() != CloseHandshakeType.NONE ) {
-					try {
-						if( !remote ) {
-							try {
-								wsl.onWebsocketCloseInitiated( this, code, message );
-							} catch ( RuntimeException e ) {
-								wsl.onWebsocketError( this, e );
-							}
+				try {
+					if( !remote ) {
+						try {
+							wsl.onWebsocketCloseInitiated( this, code, message );
+						} catch ( RuntimeException e ) {
+							wsl.onWebsocketError( this, e );
 						}
-						if( isOpen() ) {
-							CloseFrame closeFrame = new CloseFrame();
-							closeFrame.setReason( message );
-							closeFrame.setCode( code );
-							closeFrame.isValid();
-							sendFrame( closeFrame );
-						}
-					} catch ( InvalidDataException e ) {
-						log.error("generated frame is invalid", e);
-						wsl.onWebsocketError( this, e );
-						flushAndClose( CloseFrame.ABNORMAL_CLOSE, "generated frame is invalid", false );
 					}
+					if( isOpen() ) {
+						CloseFrame closeFrame = new CloseFrame();
+						closeFrame.setReason( message );
+						closeFrame.setCode( code );
+						closeFrame.isValid();
+						sendFrame( closeFrame );
+					}
+				} catch ( InvalidDataException e ) {
+					log.error("generated frame is invalid", e);
+					wsl.onWebsocketError( this, e );
+					flushAndClose( CloseFrame.ABNORMAL_CLOSE, "generated frame is invalid", false );
 				}
 				flushAndClose( code, message, remote );
 			} else if( code == CloseFrame.FLASHPOLICY ) {
@@ -572,13 +570,6 @@ public class WebSocketImpl implements WebSocket {
 			closeConnection( CloseFrame.NEVER_CONNECTED, true );
 		} else if( flushandclosestate ) {
 			closeConnection( closecode, closemessage, closedremotely );
-		} else if( draft.getCloseHandshakeType() == CloseHandshakeType.NONE ) {
-			closeConnection( CloseFrame.NORMAL, true );
-		} else if( draft.getCloseHandshakeType() == CloseHandshakeType.ONEWAY ) {
-			if( role == Role.SERVER )
-				closeConnection( CloseFrame.ABNORMAL_CLOSE, true );
-			else
-				closeConnection( CloseFrame.NORMAL, true );
 		} else {
 			closeConnection( CloseFrame.ABNORMAL_CLOSE, true );
 		}

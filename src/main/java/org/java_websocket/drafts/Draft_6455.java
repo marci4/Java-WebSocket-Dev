@@ -928,10 +928,7 @@ public class Draft_6455 extends Draft {
 			webSocketImpl.closeConnection( code, reason, true );
 		} else {
 			// echo close handshake
-			if( getCloseHandshakeType() == CloseHandshakeType.TWOWAY )
-				webSocketImpl.close( code, reason, true );
-			else
-				webSocketImpl.flushAndClose( code, reason, false );
+			webSocketImpl.close( code, reason, true );
 		}
 	}
 
@@ -965,11 +962,6 @@ public class Draft_6455 extends Draft {
 			log.trace("Payload limit reached. Allowed: {} Current: {}", maxFrameSize, totalSize);
 			throw new LimitExceededException(maxFrameSize);
 		}
-	}
-
-	@Override
-	public CloseHandshakeType getCloseHandshakeType() {
-		return CloseHandshakeType.TWOWAY;
 	}
 
 	@Override

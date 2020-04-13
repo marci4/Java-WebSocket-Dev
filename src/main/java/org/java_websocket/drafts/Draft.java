@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Locale;
 
 import org.java_websocket.WebSocketImpl;
-import org.java_websocket.enums.CloseHandshakeType;
 import org.java_websocket.enums.HandshakeState;
 import org.java_websocket.enums.Opcode;
 import org.java_websocket.enums.Role;
@@ -271,8 +270,6 @@ public abstract class Draft {
 	public abstract HandshakeBuilder postProcessHandshakeResponseAsServer( ClientHandshake request, ServerHandshakeBuilder response ) throws InvalidHandshakeException;
 
 	public abstract List<Framedata> translateFrame( ByteBuffer buffer ) throws InvalidDataException;
-
-	public abstract CloseHandshakeType getCloseHandshakeType();
 
 	/**
 	 * Drafts must only be by one websocket at all. To prevent drafts to be used more than once the Websocket implementation should call this method in order to create a new usable version of a given draft instance.<br>
