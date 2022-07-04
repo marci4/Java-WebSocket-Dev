@@ -477,6 +477,7 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
     Socket socket = channel.socket();
     socket.setTcpNoDelay(isTcpNoDelay());
     socket.setKeepAlive(true);
+    socket.setSendBufferSize(WebSocketImpl.SENDBUF);
     WebSocketImpl w = wsf.createWebSocket(this, drafts);
     w.setSelectionKey(channel.register(selector, SelectionKey.OP_READ, w));
     try {

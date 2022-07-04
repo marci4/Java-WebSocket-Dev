@@ -89,6 +89,10 @@ public class WebSocketImpl implements WebSocket {
    * Initial buffer size
    */
   public static final int RCVBUF = 16384;
+  /**
+   * Send buffer size
+   */
+  public static final int SENDBUF = 16384;
 
   /**
    * Logger instance
