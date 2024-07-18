@@ -19,7 +19,7 @@ public class DaemonThreadTest {
 
     Set<Thread> threadSet1 = Thread.getAllStackTraces().keySet();
 
-    WebSocketServer server = new WebSocketServer(new InetSocketAddress(SocketUtil.getAvailablePort())) {
+    WebSocketServer server = new WebSocketServer(new InetSocketAddress(SocketUtil.getAvailablePort()), 16) {
       @Override
       public void onOpen(WebSocket conn, ClientHandshake handshake) {}
       @Override
