@@ -11,6 +11,7 @@ jobs:
         uses: actions/setup-java@v4.2.1
         with:
           java-version: '17'
+          distribution: 'temurin'
       - name: Build
         run: mvn -DskipTests package --file pom.xml
 
@@ -23,5 +24,6 @@ jobs:
         uses: actions/setup-java@v4.2.1
         with:
           java-version: '17'
+          distribution: 'temurin'
       - name: Test
         run: mvn test --file pom.xml
