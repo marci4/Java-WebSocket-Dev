@@ -88,7 +88,7 @@ public class Issue962Test {
 
   @Test(timeout = 2000)
   public void testIssue() throws IOException, URISyntaxException, InterruptedException {
-    CountDownLatch serverStart = new CountDownLatch(1);
+    final CountDownLatch serverStart = new CountDownLatch(1);
     WebSocketServer server = new WebSocketServer(new InetSocketAddress(0)) {
       @Override
       public void onOpen(WebSocket conn, ClientHandshake handshake) {

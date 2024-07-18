@@ -15,7 +15,7 @@ public class DaemonThreadTest {
   public void test_AllCreatedThreadsAreDaemon() throws Throwable {
 
     Set<Thread> threadSet1 = Thread.getAllStackTraces().keySet();
-    CountDownLatch serverStartLatch = new CountDownLatch(1);
+    final CountDownLatch serverStartLatch = new CountDownLatch(1);
 
     WebSocketServer server = new WebSocketServer(new InetSocketAddress(0), 16) {
       @Override
