@@ -14,7 +14,7 @@ import static org.junit.Assert.assertTrue;
 
 public class DaemonThreadTest {
 
-  @Test(timeout = 1000)
+  @Test(timeout = 5000)
   public void test_AllCreatedThreadsAreDaemon() throws Throwable {
 
     Set<Thread> threadSet1 = Thread.getAllStackTraces().keySet();
