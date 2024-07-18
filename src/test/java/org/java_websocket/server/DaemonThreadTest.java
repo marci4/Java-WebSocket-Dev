@@ -18,7 +18,6 @@ public class DaemonThreadTest {
   public void test_AllCreatedThreadsAreDaemon() throws Throwable {
 
     Set<Thread> threadSet1 = Thread.getAllStackTraces().keySet();
-    final CountDownLatch ready = new CountDownLatch(1);
 
     WebSocketServer server = new WebSocketServer(new InetSocketAddress(SocketUtil.getAvailablePort())) {
       @Override
@@ -39,9 +38,7 @@ public class DaemonThreadTest {
 
     WebSocketClient client = new WebSocketClient(URI.create("ws://localhost:" + server.getPort())) {
       @Override
-      public void onOpen(ServerHandshake handshake) {
-        ready.countDown();
-      }
+      public void onOpen(ServerHandshake handshake) { }
       @Override
       public void onClose(int code, String reason, boolean remote) {}
       @Override
@@ -51,9 +48,7 @@ public class DaemonThreadTest {
     };
     client.setDaemon(false);
     client.setDaemon(true);
-    client.connect();
-
-    ready.await();
+    client.connectBlocking();
     Set<Thread> threadSet2 = Thread.getAllStackTraces().keySet();
     threadSet2.removeAll(threadSet1);
 
