@@ -32,7 +32,6 @@ import java.util.concurrent.CountDownLatch;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
-import org.java_websocket.util.SocketUtil;
 import org.junit.Test;
 
 public class Issue811Test {
@@ -42,7 +41,7 @@ public class Issue811Test {
   @Test(timeout = 2000)
   public void testSetConnectionLostTimeout() throws IOException, InterruptedException {
     final MyWebSocketServer server = new MyWebSocketServer(
-        new InetSocketAddress(SocketUtil.getAvailablePort()));
+        new InetSocketAddress(0));
     server.start();
     new Thread(new Runnable() {
       @Override

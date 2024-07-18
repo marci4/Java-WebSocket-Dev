@@ -51,7 +51,6 @@ import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.server.DefaultSSLWebSocketServerFactory;
 import org.java_websocket.server.WebSocketServer;
 import org.java_websocket.util.SSLContextUtil;
-import org.java_websocket.util.SocketUtil;
 import org.junit.Test;
 
 public class Issue997Test {
@@ -59,8 +58,7 @@ public class Issue997Test {
   @Test(timeout = 2000)
   public void test_localServer_ServerLocalhost_Client127_CheckActive()
       throws CertificateException, UnrecoverableKeyException, NoSuchAlgorithmException, KeyManagementException, KeyStoreException, IOException, URISyntaxException, InterruptedException {
-    SSLWebSocketClient client = testIssueWithLocalServer("127.0.0.1", SocketUtil.getAvailablePort(),
-        SSLContextUtil.getLocalhostOnlyContext(), SSLContextUtil.getLocalhostOnlyContext(),
+    SSLWebSocketClient client = testIssueWithLocalServer("127.0.0.1", SSLContextUtil.getLocalhostOnlyContext(), SSLContextUtil.getLocalhostOnlyContext(),
         "HTTPS");
     assertFalse(client.onOpen);
     assertTrue(client.onSSLError);
@@ -69,8 +67,7 @@ public class Issue997Test {
   @Test(timeout = 2000)
   public void test_localServer_ServerLocalhost_Client127_CheckInactive()
       throws CertificateException, UnrecoverableKeyException, NoSuchAlgorithmException, KeyManagementException, KeyStoreException, IOException, URISyntaxException, InterruptedException {
-    SSLWebSocketClient client = testIssueWithLocalServer("127.0.0.1", SocketUtil.getAvailablePort(),
-        SSLContextUtil.getLocalhostOnlyContext(), SSLContextUtil.getLocalhostOnlyContext(), "");
+    SSLWebSocketClient client = testIssueWithLocalServer("127.0.0.1", SSLContextUtil.getLocalhostOnlyContext(), SSLContextUtil.getLocalhostOnlyContext(), "");
     assertTrue(client.onOpen);
     assertFalse(client.onSSLError);
   }
@@ -78,8 +75,7 @@ public class Issue997Test {
   @Test(timeout = 2000)
   public void test_localServer_ServerLocalhost_Client127_CheckDefault()
       throws CertificateException, UnrecoverableKeyException, NoSuchAlgorithmException, KeyManagementException, KeyStoreException, IOException, URISyntaxException, InterruptedException {
-    SSLWebSocketClient client = testIssueWithLocalServer("127.0.0.1", SocketUtil.getAvailablePort(),
-        SSLContextUtil.getLocalhostOnlyContext(), SSLContextUtil.getLocalhostOnlyContext(), null);
+    SSLWebSocketClient client = testIssueWithLocalServer("127.0.0.1", SSLContextUtil.getLocalhostOnlyContext(), SSLContextUtil.getLocalhostOnlyContext(), null);
     assertFalse(client.onOpen);
     assertTrue(client.onSSLError);
   }
@@ -87,8 +83,7 @@ public class Issue997Test {
   @Test(timeout = 2000)
   public void test_localServer_ServerLocalhost_ClientLocalhost_CheckActive()
       throws CertificateException, UnrecoverableKeyException, NoSuchAlgorithmException, KeyManagementException, KeyStoreException, IOException, URISyntaxException, InterruptedException {
-    SSLWebSocketClient client = testIssueWithLocalServer("localhost", SocketUtil.getAvailablePort(),
-        SSLContextUtil.getLocalhostOnlyContext(), SSLContextUtil.getLocalhostOnlyContext(),
+    SSLWebSocketClient client = testIssueWithLocalServer("localhost", SSLContextUtil.getLocalhostOnlyContext(), SSLContextUtil.getLocalhostOnlyContext(),
         "HTTPS");
     assertTrue(client.onOpen);
     assertFalse(client.onSSLError);
@@ -97,8 +92,7 @@ public class Issue997Test {
   @Test(timeout = 2000)
   public void test_localServer_ServerLocalhost_ClientLocalhost_CheckInactive()
       throws CertificateException, UnrecoverableKeyException, NoSuchAlgorithmException, KeyManagementException, KeyStoreException, IOException, URISyntaxException, InterruptedException {
-    SSLWebSocketClient client = testIssueWithLocalServer("localhost", SocketUtil.getAvailablePort(),
-        SSLContextUtil.getLocalhostOnlyContext(), SSLContextUtil.getLocalhostOnlyContext(), "");
+    SSLWebSocketClient client = testIssueWithLocalServer("localhost", SSLContextUtil.getLocalhostOnlyContext(), SSLContextUtil.getLocalhostOnlyContext(), "");
     assertTrue(client.onOpen);
     assertFalse(client.onSSLError);
   }
@@ -106,27 +100,28 @@ public class Issue997Test {
   @Test(timeout = 2000)
   public void test_localServer_ServerLocalhost_ClientLocalhost_CheckDefault()
       throws CertificateException, UnrecoverableKeyException, NoSuchAlgorithmException, KeyManagementException, KeyStoreException, IOException, URISyntaxException, InterruptedException {
-    SSLWebSocketClient client = testIssueWithLocalServer("localhost", SocketUtil.getAvailablePort(),
-        SSLContextUtil.getLocalhostOnlyContext(), SSLContextUtil.getLocalhostOnlyContext(), null);
+    SSLWebSocketClient client = testIssueWithLocalServer("localhost",  SSLContextUtil.getLocalhostOnlyContext(), SSLContextUtil.getLocalhostOnlyContext(), null);
     assertTrue(client.onOpen);
     assertFalse(client.onSSLError);
   }
 
 
-  public SSLWebSocketClient testIssueWithLocalServer(String address, int port,
-      SSLContext serverContext, SSLContext clientContext, String endpointIdentificationAlgorithm)
+  public SSLWebSocketClient testIssueWithLocalServer(String address, SSLContext serverContext, SSLContext clientContext, String endpointIdentificationAlgorithm)
       throws IOException, URISyntaxException, InterruptedException {
     CountDownLatch countServerDownLatch = new CountDownLatch(1);
-    SSLWebSocketClient client = new SSLWebSocketClient(address, port,
-        endpointIdentificationAlgorithm);
-    WebSocketServer server = new SSLWebSocketServer(port, countServerDownLatch);
+
+    WebSocketServer server = new SSLWebSocketServer(0, countServerDownLatch);
 
     server.setWebSocketFactory(new DefaultSSLWebSocketServerFactory(serverContext));
+
+    server.start();
+    countServerDownLatch.await();
+
+    SSLWebSocketClient client = new SSLWebSocketClient(address, server.getPort(),
+            endpointIdentificationAlgorithm);
     if (clientContext != null) {
       client.setSocketFactory(clientContext.getSocketFactory());
     }
-    server.start();
-    countServerDownLatch.await();
     client.connectBlocking(1, TimeUnit.SECONDS);
     return client;
   }

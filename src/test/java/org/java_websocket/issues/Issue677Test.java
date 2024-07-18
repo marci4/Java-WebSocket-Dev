@@ -36,7 +36,6 @@ import org.java_websocket.framing.CloseFrame;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.server.WebSocketServer;
-import org.java_websocket.util.SocketUtil;
 import org.junit.Test;
 
 public class Issue677Test {
@@ -46,47 +45,7 @@ public class Issue677Test {
 
   @Test
   public void testIssue() throws Exception {
-    int port = SocketUtil.getAvailablePort();
-    WebSocketClient webSocket0 = new WebSocketClient(new URI("ws://localhost:" + port)) {
-      @Override
-      public void onOpen(ServerHandshake handshakedata) {
-
-      }
-
-      @Override
-      public void onMessage(String message) {
-
-      }
-
-      @Override
-      public void onClose(int code, String reason, boolean remote) {
-        countDownLatch0.countDown();
-      }
-
-      @Override
-      public void onError(Exception ex) {
-
-      }
-    };
-    WebSocketClient webSocket1 = new WebSocketClient(new URI("ws://localhost:" + port)) {
-      @Override
-      public void onOpen(ServerHandshake handshakedata) {
-      }
-
-      @Override
-      public void onMessage(String message) {
-      }
-
-      @Override
-      public void onClose(int code, String reason, boolean remote) {
-      }
-
-      @Override
-      public void onError(Exception ex) {
-
-      }
-    };
-    WebSocketServer server = new WebSocketServer(new InetSocketAddress(port)) {
+    WebSocketServer server = new WebSocketServer(new InetSocketAddress(0)) {
       @Override
       public void onOpen(WebSocket conn, ClientHandshake handshake) {
       }
@@ -112,6 +71,48 @@ public class Issue677Test {
     };
     server.start();
     countServerDownLatch.await();
+
+
+    WebSocketClient webSocket0 = new WebSocketClient(new URI("ws://localhost:" + server.getPort())) {
+      @Override
+      public void onOpen(ServerHandshake handshakedata) {
+
+      }
+
+      @Override
+      public void onMessage(String message) {
+
+      }
+
+      @Override
+      public void onClose(int code, String reason, boolean remote) {
+        countDownLatch0.countDown();
+      }
+
+      @Override
+      public void onError(Exception ex) {
+
+      }
+    };
+    WebSocketClient webSocket1 = new WebSocketClient(new URI("ws://localhost:" + server.getPort())) {
+      @Override
+      public void onOpen(ServerHandshake handshakedata) {
+      }
+
+      @Override
+      public void onMessage(String message) {
+      }
+
+      @Override
+      public void onClose(int code, String reason, boolean remote) {
+      }
+
+      @Override
+      public void onError(Exception ex) {
+
+      }
+    };
+
     webSocket0.connectBlocking();
     assertTrue("webSocket.isOpen()", webSocket0.isOpen());
     webSocket0.close();

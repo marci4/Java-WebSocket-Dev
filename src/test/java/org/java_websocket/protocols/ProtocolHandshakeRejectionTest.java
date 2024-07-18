@@ -46,7 +46,6 @@ import org.java_websocket.framing.CloseFrame;
 import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.util.Base64;
 import org.java_websocket.util.Charsetfunctions;
-import org.java_websocket.util.SocketUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -57,16 +56,13 @@ public class ProtocolHandshakeRejectionTest {
   private static Thread thread;
   private static ServerSocket serverSocket;
 
-  private static int port;
-
   @BeforeClass
   public static void startServer() throws Exception {
-    port = SocketUtil.getAvailablePort();
     thread = new Thread(
         new Runnable() {
           public void run() {
             try {
-              serverSocket = new ServerSocket(port);
+              serverSocket = new ServerSocket(0);
               serverSocket.setReuseAddress(true);
               while (true) {
                 Socket client = null;
@@ -464,7 +460,7 @@ public class ProtocolHandshakeRejectionTest {
     final int finalI = i;
     final boolean[] threadReturned = {false};
     final WebSocketClient webSocketClient = new WebSocketClient(
-        new URI("ws://localhost:" + port + "/" + finalI), draft) {
+        new URI("ws://localhost:" + serverSocket.getLocalPort() + "/" + finalI), draft) {
       @Override
       public void onOpen(ServerHandshake handshakedata) {
         switch (finalI) {

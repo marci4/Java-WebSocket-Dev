@@ -39,7 +39,6 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.server.WebSocketServer;
-import org.java_websocket.util.SocketUtil;
 import org.junit.Test;
 
 public class Issue713Test {
@@ -51,7 +50,7 @@ public class Issue713Test {
   @Test
   public void testIllegalArgument() throws IOException {
     WebSocketServer server = new WebSocketServer(
-        new InetSocketAddress(SocketUtil.getAvailablePort())) {
+        new InetSocketAddress(0)) {
       @Override
       public void onOpen(WebSocket conn, ClientHandshake handshake) {
 
@@ -93,8 +92,7 @@ public class Issue713Test {
 
   @Test(timeout = 2000)
   public void testIssue() throws Exception {
-    final int port = SocketUtil.getAvailablePort();
-    WebSocketServer server = new WebSocketServer(new InetSocketAddress(port)) {
+    WebSocketServer server = new WebSocketServer(new InetSocketAddress(0)) {
       @Override
       public void onOpen(WebSocket conn, ClientHandshake handshake) {
       }
@@ -117,7 +115,7 @@ public class Issue713Test {
       public void onStart() {
         try {
           for (int i = 0; i < 10; i++) {
-            TestWebSocket tw = new TestWebSocket(port);
+            TestWebSocket tw = new TestWebSocket(getPort());
             tw.connect();
           }
         } catch (Exception e) {

@@ -34,7 +34,6 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.server.WebSocketServer;
-import org.java_websocket.util.SocketUtil;
 import org.java_websocket.util.ThreadCheck;
 import org.junit.Assert;
 import org.junit.Test;
@@ -46,8 +45,7 @@ public class Issue666Test {
   @Test
   public void testServer() throws Exception {
     Map<Long, Thread> mapBefore = ThreadCheck.getThreadMap();
-    int port = SocketUtil.getAvailablePort();
-    WebSocketServer server = new WebSocketServer(new InetSocketAddress(port)) {
+    WebSocketServer server = new WebSocketServer(new InetSocketAddress(0)) {
       @Override
       public void onOpen(WebSocket conn, ClientHandshake handshake) {
       }
@@ -90,28 +88,7 @@ public class Issue666Test {
 
   @Test
   public void testClient() throws Exception {
-    int port = SocketUtil.getAvailablePort();
-    WebSocketClient client = new WebSocketClient(new URI("ws://localhost:" + port)) {
-      @Override
-      public void onOpen(ServerHandshake handshakedata) {
-
-      }
-
-      @Override
-      public void onMessage(String message) {
-
-      }
-
-      @Override
-      public void onClose(int code, String reason, boolean remote) {
-      }
-
-      @Override
-      public void onError(Exception ex) {
-
-      }
-    };
-    WebSocketServer server = new WebSocketServer(new InetSocketAddress(port)) {
+    WebSocketServer server = new WebSocketServer(new InetSocketAddress(0)) {
       @Override
       public void onOpen(WebSocket conn, ClientHandshake handshake) {
       }
@@ -138,6 +115,28 @@ public class Issue666Test {
     };
     server.start();
     countServerDownLatch.await();
+
+    WebSocketClient client = new WebSocketClient(new URI("ws://localhost:" + server.getPort())) {
+      @Override
+      public void onOpen(ServerHandshake handshakedata) {
+
+      }
+
+      @Override
+      public void onMessage(String message) {
+
+      }
+
+      @Override
+      public void onClose(int code, String reason, boolean remote) {
+      }
+
+      @Override
+      public void onError(Exception ex) {
+
+      }
+    };
+
     Map<Long, Thread> mapBefore = ThreadCheck.getThreadMap();
     client.connectBlocking();
     Map<Long, Thread> mapAfter = ThreadCheck.getThreadMap();

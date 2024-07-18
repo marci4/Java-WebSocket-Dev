@@ -38,7 +38,6 @@ import org.java_websocket.framing.PingFrame;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.server.WebSocketServer;
-import org.java_websocket.util.SocketUtil;
 import org.junit.Test;
 
 public class Issue941Test {
@@ -49,8 +48,41 @@ public class Issue941Test {
 
   @Test
   public void testIssue() throws Exception {
-    int port = SocketUtil.getAvailablePort();
-    WebSocketClient client = new WebSocketClient(new URI("ws://localhost:" + port)) {
+    final CountDownLatch serverStart = new CountDownLatch(1);
+    WebSocketServer server = new WebSocketServer(new InetSocketAddress(0)) {
+      @Override
+      public void onOpen(WebSocket conn, ClientHandshake handshake) {
+      }
+
+      @Override
+      public void onClose(WebSocket conn, int code, String reason, boolean remote) {
+      }
+
+      @Override
+      public void onMessage(WebSocket conn, String message) {
+      }
+
+      @Override
+      public void onError(WebSocket conn, Exception ex) {
+      }
+
+      @Override
+      public void onStart() {
+        serverStart.countDown();
+      }
+
+      @Override
+      public void onWebsocketPing(WebSocket conn, Framedata f) {
+        receivedPingBuffer = f.getPayloadData().array();
+        super.onWebsocketPing(conn, f);
+        pingLatch.countDown();
+      }
+    };
+
+    server.start();
+    serverStart.await();
+
+    WebSocketClient client = new WebSocketClient(new URI("ws://localhost:" + server.getPort())) {
       @Override
       public void onOpen(ServerHandshake handshakedata) {
       }
@@ -82,36 +114,7 @@ public class Issue941Test {
       }
     };
 
-    WebSocketServer server = new WebSocketServer(new InetSocketAddress(port)) {
-      @Override
-      public void onOpen(WebSocket conn, ClientHandshake handshake) {
-      }
 
-      @Override
-      public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-      }
-
-      @Override
-      public void onMessage(WebSocket conn, String message) {
-      }
-
-      @Override
-      public void onError(WebSocket conn, Exception ex) {
-      }
-
-      @Override
-      public void onStart() {
-      }
-
-      @Override
-      public void onWebsocketPing(WebSocket conn, Framedata f) {
-        receivedPingBuffer = f.getPayloadData().array();
-        super.onWebsocketPing(conn, f);
-        pingLatch.countDown();
-      }
-    };
-
-    server.start();
     client.connectBlocking();
     client.setConnectionLostTimeout(1);
     pingLatch.await();

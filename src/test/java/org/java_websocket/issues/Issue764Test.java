@@ -44,7 +44,6 @@ import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.server.DefaultSSLWebSocketServerFactory;
 import org.java_websocket.server.WebSocketServer;
 import org.java_websocket.util.SSLContextUtil;
-import org.java_websocket.util.SocketUtil;
 import org.junit.Test;
 
 public class Issue764Test {
@@ -55,8 +54,16 @@ public class Issue764Test {
   @Test(timeout = 2000)
   public void testIssue()
       throws IOException, URISyntaxException, KeyStoreException, NoSuchAlgorithmException, KeyManagementException, UnrecoverableKeyException, CertificateException, InterruptedException {
-    int port = SocketUtil.getAvailablePort();
-    final WebSocketClient webSocket = new WebSocketClient(new URI("wss://localhost:" + port)) {
+    WebSocketServer server = new MyWebSocketServer(0, countServerDownLatch);
+
+    SSLContext sslContext = SSLContextUtil.getContext();
+
+    server.setWebSocketFactory(new DefaultSSLWebSocketServerFactory(sslContext));
+
+    server.start();
+    countServerDownLatch.await();
+
+    final WebSocketClient webSocket = new WebSocketClient(new URI("wss://localhost:" + server.getPort())) {
       @Override
       public void onOpen(ServerHandshake handshakedata) {
         countClientDownLatch.countDown();
@@ -75,14 +82,7 @@ public class Issue764Test {
       public void onError(Exception ex) {
       }
     };
-    WebSocketServer server = new MyWebSocketServer(port, webSocket, countServerDownLatch);
-
-    SSLContext sslContext = SSLContextUtil.getContext();
-
-    server.setWebSocketFactory(new DefaultSSLWebSocketServerFactory(sslContext));
     webSocket.setSocketFactory(sslContext.getSocketFactory());
-    server.start();
-    countServerDownLatch.await();
     webSocket.connectBlocking();
     webSocket.reconnectBlocking();
     countClientDownLatch.await();
@@ -91,14 +91,11 @@ public class Issue764Test {
 
   private static class MyWebSocketServer extends WebSocketServer {
 
-    private final WebSocketClient webSocket;
     private final CountDownLatch countServerDownLatch;
 
 
-    public MyWebSocketServer(int port, WebSocketClient webSocket,
-        CountDownLatch countServerDownLatch) {
+    public MyWebSocketServer(int port,  CountDownLatch countServerDownLatch) {
       super(new InetSocketAddress(port));
-      this.webSocket = webSocket;
       this.countServerDownLatch = countServerDownLatch;
     }
 

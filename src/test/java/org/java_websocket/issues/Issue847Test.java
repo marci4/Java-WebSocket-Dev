@@ -44,7 +44,6 @@ import org.java_websocket.framing.BinaryFrame;
 import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.util.Charsetfunctions;
 import org.java_websocket.util.KeyUtils;
-import org.java_websocket.util.SocketUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -57,7 +56,6 @@ public class Issue847Test {
   private static Thread thread;
   private static ServerSocket serverSocket;
 
-  private static int port;
   private static final int NUMBER_OF_TESTS = 20;
 
   @Parameterized.Parameter
@@ -74,12 +72,11 @@ public class Issue847Test {
 
   @BeforeClass
   public static void startServer() throws Exception {
-    port = SocketUtil.getAvailablePort();
     thread = new Thread(
         new Runnable() {
           public void run() {
             try {
-              serverSocket = new ServerSocket(port);
+              serverSocket = new ServerSocket(0);
               serverSocket.setReuseAddress(true);
               while (true) {
                 Socket client = null;
@@ -158,7 +155,7 @@ public class Issue847Test {
   private void testIncrementalFrame(boolean useMask, int size) throws Exception {
     final boolean[] threadReturned = {false};
     final WebSocketClient webSocketClient = new WebSocketClient(
-        new URI("ws://localhost:" + port + "/" + useMask + "/" + size)) {
+        new URI("ws://localhost:" + serverSocket.getLocalPort() + "/" + useMask + "/" + size)) {
       @Override
       public void onOpen(ServerHandshake handshakedata) {
       }

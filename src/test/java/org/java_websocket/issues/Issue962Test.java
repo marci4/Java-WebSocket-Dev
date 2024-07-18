@@ -31,13 +31,13 @@ import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
+import java.util.concurrent.CountDownLatch;
 import javax.net.SocketFactory;
 import org.java_websocket.WebSocket;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.server.WebSocketServer;
-import org.java_websocket.util.SocketUtil;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -88,8 +88,33 @@ public class Issue962Test {
 
   @Test(timeout = 2000)
   public void testIssue() throws IOException, URISyntaxException, InterruptedException {
-    int port = SocketUtil.getAvailablePort();
-    WebSocketClient client = new WebSocketClient(new URI("ws://127.0.0.1:" + port)) {
+    CountDownLatch serverStart = new CountDownLatch(1);
+    WebSocketServer server = new WebSocketServer(new InetSocketAddress(0)) {
+      @Override
+      public void onOpen(WebSocket conn, ClientHandshake handshake) {
+      }
+
+      @Override
+      public void onClose(WebSocket conn, int code, String reason, boolean remote) {
+      }
+
+      @Override
+      public void onMessage(WebSocket conn, String message) {
+      }
+
+      @Override
+      public void onError(WebSocket conn, Exception ex) {
+      }
+
+      @Override
+      public void onStart() {
+        serverStart.countDown();
+      }
+    };
+
+    server.start();
+    serverStart.await();
+    WebSocketClient client = new WebSocketClient(new URI("ws://127.0.0.1:" + server.getPort())) {
       @Override
       public void onOpen(ServerHandshake handshakedata) {
       }
@@ -112,29 +137,7 @@ public class Issue962Test {
 
     client.setSocketFactory(new TestSocketFactory(bindingAddress));
 
-    WebSocketServer server = new WebSocketServer(new InetSocketAddress(port)) {
-      @Override
-      public void onOpen(WebSocket conn, ClientHandshake handshake) {
-      }
 
-      @Override
-      public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-      }
-
-      @Override
-      public void onMessage(WebSocket conn, String message) {
-      }
-
-      @Override
-      public void onError(WebSocket conn, Exception ex) {
-      }
-
-      @Override
-      public void onStart() {
-      }
-    };
-
-    server.start();
     client.connectBlocking();
     Assert.assertEquals(bindingAddress, client.getSocket().getLocalAddress().getHostAddress());
     Assert.assertNotEquals(0, client.getSocket().getLocalPort());

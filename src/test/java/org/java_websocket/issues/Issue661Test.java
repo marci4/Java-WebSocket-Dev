@@ -35,7 +35,6 @@ import java.util.concurrent.CountDownLatch;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
-import org.java_websocket.util.SocketUtil;
 import org.java_websocket.util.ThreadCheck;
 import org.junit.Rule;
 import org.junit.Test;
@@ -52,8 +51,7 @@ public class Issue661Test {
 
   @Test(timeout = 2000)
   public void testIssue() throws Exception {
-    int port = SocketUtil.getAvailablePort();
-    WebSocketServer server0 = new WebSocketServer(new InetSocketAddress(port)) {
+    WebSocketServer server0 = new WebSocketServer(new InetSocketAddress(0)) {
       @Override
       public void onOpen(WebSocket conn, ClientHandshake handshake) {
         fail("There should be no onOpen");
@@ -80,12 +78,8 @@ public class Issue661Test {
       }
     };
     server0.start();
-    try {
-      countServerDownLatch.await();
-    } catch (InterruptedException e) {
-      //
-    }
-    WebSocketServer server1 = new WebSocketServer(new InetSocketAddress(port)) {
+    countServerDownLatch.await();
+    WebSocketServer server1 = new WebSocketServer(new InetSocketAddress(server0.getPort())) {
       @Override
       public void onOpen(WebSocket conn, ClientHandshake handshake) {
         fail("There should be no onOpen");

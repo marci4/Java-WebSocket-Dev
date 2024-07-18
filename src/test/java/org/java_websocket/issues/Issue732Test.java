@@ -35,7 +35,6 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.server.WebSocketServer;
-import org.java_websocket.util.SocketUtil;
 import org.java_websocket.util.ThreadCheck;
 import org.junit.Assert;
 import org.junit.Rule;
@@ -47,11 +46,39 @@ public class Issue732Test {
   public ThreadCheck zombies = new ThreadCheck();
 
   private CountDownLatch countServerDownLatch = new CountDownLatch(1);
+  private CountDownLatch countServerStart = new CountDownLatch(1);
 
   @Test(timeout = 2000)
   public void testIssue() throws Exception {
-    int port = SocketUtil.getAvailablePort();
-    final WebSocketClient webSocket = new WebSocketClient(new URI("ws://localhost:" + port)) {
+    WebSocketServer server = new WebSocketServer(new InetSocketAddress(0)) {
+      @Override
+      public void onOpen(WebSocket conn, ClientHandshake handshake) {
+        conn.send("hi");
+      }
+
+      @Override
+      public void onClose(WebSocket conn, int code, String reason, boolean remote) {
+        countServerDownLatch.countDown();
+      }
+
+      @Override
+      public void onMessage(WebSocket conn, String message) {
+        conn.close();
+      }
+
+      @Override
+      public void onError(WebSocket conn, Exception ex) {
+        fail("There should be no onError!");
+      }
+
+      @Override
+      public void onStart() {
+        countServerStart.countDown();
+      }
+    };
+    server.start();
+    countServerStart.await();
+    final WebSocketClient webSocket = new WebSocketClient(new URI("ws://localhost:" + server.getPort())) {
       @Override
       public void onOpen(ServerHandshake handshakedata) {
         try {
@@ -92,33 +119,7 @@ public class Issue732Test {
         }
       }
     };
-    WebSocketServer server = new WebSocketServer(new InetSocketAddress(port)) {
-      @Override
-      public void onOpen(WebSocket conn, ClientHandshake handshake) {
-        conn.send("hi");
-      }
-
-      @Override
-      public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-        countServerDownLatch.countDown();
-      }
-
-      @Override
-      public void onMessage(WebSocket conn, String message) {
-        conn.close();
-      }
-
-      @Override
-      public void onError(WebSocket conn, Exception ex) {
-        fail("There should be no onError!");
-      }
-
-      @Override
-      public void onStart() {
-        webSocket.connect();
-      }
-    };
-    server.start();
+    webSocket.connect();
     countServerDownLatch.await();
     server.stop();
   }

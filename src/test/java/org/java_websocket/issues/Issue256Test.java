@@ -40,7 +40,6 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.server.WebSocketServer;
-import org.java_websocket.util.SocketUtil;
 import org.java_websocket.util.ThreadCheck;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -55,7 +54,6 @@ public class Issue256Test {
   private static final int NUMBER_OF_TESTS = 10;
   private static WebSocketServer ws;
 
-  private static int port;
   static CountDownLatch countServerDownLatch = new CountDownLatch(1);
   @Rule
   public ThreadCheck zombies = new ThreadCheck();
@@ -65,8 +63,7 @@ public class Issue256Test {
 
   @BeforeClass
   public static void startServer() throws Exception {
-    port = SocketUtil.getAvailablePort();
-    ws = new WebSocketServer(new InetSocketAddress(port), 16) {
+    ws = new WebSocketServer(new InetSocketAddress(0), 16) {
       @Override
       public void onOpen(WebSocket conn, ClientHandshake handshake) {
 
@@ -103,7 +100,7 @@ public class Issue256Test {
   private void runTestScenarioReconnect(boolean closeBlocking) throws Exception {
     final CountDownLatch countDownLatch0 = new CountDownLatch(1);
     final CountDownLatch countDownLatch1 = new CountDownLatch(2);
-    WebSocketClient clt = new WebSocketClient(new URI("ws://localhost:" + port)) {
+    WebSocketClient clt = new WebSocketClient(new URI("ws://localhost:" + ws.getPort())) {
       @Override
       public void onOpen(ServerHandshake handshakedata) {
         countDownLatch1.countDown();

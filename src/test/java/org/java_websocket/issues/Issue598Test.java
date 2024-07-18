@@ -43,7 +43,6 @@ import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.protocols.IProtocol;
 import org.java_websocket.protocols.Protocol;
 import org.java_websocket.server.WebSocketServer;
-import org.java_websocket.util.SocketUtil;
 import org.junit.Test;
 
 public class Issue598Test {
@@ -56,7 +55,6 @@ public class Issue598Test {
     final CountDownLatch countServerDownLatch = new CountDownLatch(1);
     final CountDownLatch countReceiveDownLatch = new CountDownLatch(1);
     final CountDownLatch countCloseDownLatch = new CountDownLatch(1);
-    int port = SocketUtil.getAvailablePort();
     Draft draft = null;
     switch (testCase) {
       case 0:
@@ -72,28 +70,8 @@ public class Issue598Test {
         draft = new Draft_6455(extensionList, protocolList, 9);
         break;
     }
-    WebSocketClient webSocket = new WebSocketClient(new URI("ws://localhost:" + port)) {
-      @Override
-      public void onOpen(ServerHandshake handshakedata) {
 
-      }
-
-      @Override
-      public void onMessage(String message) {
-      }
-
-
-      @Override
-      public void onClose(int code, String reason, boolean remote) {
-
-      }
-
-      @Override
-      public void onError(Exception ex) {
-
-      }
-    };
-    WebSocketServer server = new WebSocketServer(new InetSocketAddress(port),
+    WebSocketServer server = new WebSocketServer(new InetSocketAddress(0),
         Collections.singletonList(draft)) {
       @Override
       public void onOpen(WebSocket conn, ClientHandshake handshake) {
@@ -128,6 +106,27 @@ public class Issue598Test {
     };
     server.start();
     countServerDownLatch.await();
+    WebSocketClient webSocket = new WebSocketClient(new URI("ws://localhost:" + server.getPort())) {
+      @Override
+      public void onOpen(ServerHandshake handshakedata) {
+
+      }
+
+      @Override
+      public void onMessage(String message) {
+      }
+
+
+      @Override
+      public void onClose(int code, String reason, boolean remote) {
+
+      }
+
+      @Override
+      public void onError(Exception ex) {
+
+      }
+    };
     webSocket.connectBlocking();
     switch (testCase) {
       case 0:

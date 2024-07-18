@@ -44,7 +44,6 @@ import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.server.DefaultSSLWebSocketServerFactory;
 import org.java_websocket.server.WebSocketServer;
 import org.java_websocket.util.SSLContextUtil;
-import org.java_websocket.util.SocketUtil;
 import org.junit.Test;
 
 public class Issue825Test {
@@ -56,8 +55,17 @@ public class Issue825Test {
     final CountDownLatch countClientOpenLatch = new CountDownLatch(3);
     final CountDownLatch countClientMessageLatch = new CountDownLatch(3);
     final CountDownLatch countServerDownLatch = new CountDownLatch(1);
-    int port = SocketUtil.getAvailablePort();
-    final WebSocketClient webSocket = new WebSocketClient(new URI("wss://localhost:" + port)) {
+    WebSocketServer server = new MyWebSocketServer(0, countServerDownLatch,
+            countClientMessageLatch);
+
+    // load up the key store
+    SSLContext sslContext = SSLContextUtil.getContext();
+
+    server.setWebSocketFactory(new DefaultSSLWebSocketServerFactory(sslContext));
+    server.start();
+    countServerDownLatch.await();
+
+    final WebSocketClient webSocket = new WebSocketClient(new URI("wss://localhost:" + server.getPort())) {
       @Override
       public void onOpen(ServerHandshake handshakedata) {
         countClientOpenLatch.countDown();
@@ -75,16 +83,7 @@ public class Issue825Test {
       public void onError(Exception ex) {
       }
     };
-    WebSocketServer server = new MyWebSocketServer(port, countServerDownLatch,
-        countClientMessageLatch);
-
-    // load up the key store
-    SSLContext sslContext = SSLContextUtil.getContext();
-
-    server.setWebSocketFactory(new DefaultSSLWebSocketServerFactory(sslContext));
     webSocket.setSocketFactory(sslContext.getSocketFactory());
-    server.start();
-    countServerDownLatch.await();
     webSocket.connectBlocking();
     webSocket.send("hi");
     Thread.sleep(10);

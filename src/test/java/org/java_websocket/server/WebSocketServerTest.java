@@ -42,7 +42,6 @@ import org.java_websocket.WebSocket;
 import org.java_websocket.drafts.Draft;
 import org.java_websocket.drafts.Draft_6455;
 import org.java_websocket.handshake.ClientHandshake;
-import org.java_websocket.util.SocketUtil;
 import org.junit.Test;
 
 public class WebSocketServerTest {
@@ -112,9 +111,8 @@ public class WebSocketServerTest {
 
   @Test
   public void testGetAddress() throws IOException {
-    int port = SocketUtil.getAvailablePort();
-    InetSocketAddress inetSocketAddress = new InetSocketAddress(port);
-    MyWebSocketServer server = new MyWebSocketServer(port);
+    InetSocketAddress inetSocketAddress = new InetSocketAddress(0);
+    MyWebSocketServer server = new MyWebSocketServer(0);
     assertEquals(inetSocketAddress, server.getAddress());
   }
 
@@ -131,10 +129,9 @@ public class WebSocketServerTest {
 
   @Test
   public void testGetPort() throws IOException, InterruptedException {
-    int port = SocketUtil.getAvailablePort();
     CountDownLatch countServerDownLatch = new CountDownLatch(1);
-    MyWebSocketServer server = new MyWebSocketServer(port);
-    assertEquals(port, server.getPort());
+    MyWebSocketServer server = new MyWebSocketServer(13337);
+    assertEquals(13337, server.getPort());
     server = new MyWebSocketServer(0, countServerDownLatch);
     assertEquals(0, server.getPort());
     server.start();

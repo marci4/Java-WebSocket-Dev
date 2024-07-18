@@ -14,7 +14,6 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.server.WebSocketServer;
-import org.java_websocket.util.SocketUtil;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -24,8 +23,7 @@ public class Issue1203Test {
   boolean isClosedCalled = false;
   @Test(timeout = 50000)
   public void testIssue() throws Exception {
-    int port = SocketUtil.getAvailablePort();
-    WebSocketServer server = new WebSocketServer(new InetSocketAddress(port)) {
+    WebSocketServer server = new WebSocketServer(new InetSocketAddress(0)) {
       @Override
       public void onOpen(WebSocket conn, ClientHandshake handshake) {
       }
@@ -47,7 +45,11 @@ public class Issue1203Test {
         countServerDownLatch.countDown();
       }
     };
-    final WebSocketClient client = new WebSocketClient(new URI("ws://localhost:" + port)) {
+    server.setConnectionLostTimeout(10);
+    server.start();
+    countServerDownLatch.await();
+
+    final WebSocketClient client = new WebSocketClient(new URI("ws://localhost:" + server.getPort())) {
       @Override
       public void onOpen(ServerHandshake handshakedata) {
         countClientDownLatch.countDown();
@@ -68,10 +70,6 @@ public class Issue1203Test {
 
       }
     };
-
-    server.setConnectionLostTimeout(10);
-    server.start();
-    countServerDownLatch.await();
 
     client.setConnectionLostTimeout(10);
     Timer timer = new Timer();

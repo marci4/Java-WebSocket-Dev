@@ -5,7 +5,6 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.server.WebSocketServer;
-import org.java_websocket.util.SocketUtil;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -49,8 +48,7 @@ public class Issue1160Test {
   public void nonFatalErrorShallBeHandledByServer() throws Exception {
     final AtomicInteger isServerOnErrorCalledCounter = new AtomicInteger(0);
 
-    int port = SocketUtil.getAvailablePort();
-    WebSocketServer server = new WebSocketServer(new InetSocketAddress(port)) {
+    WebSocketServer server = new WebSocketServer(new InetSocketAddress(0)) {
       @Override
       public void onOpen(WebSocket conn, ClientHandshake handshake) {
       }
@@ -85,7 +83,7 @@ public class Issue1160Test {
     server.start();
     countServerStart.await();
 
-    URI uri = new URI("ws://localhost:" + port);
+    URI uri = new URI("ws://localhost:" + server.getPort());
 
     int CONNECTION_COUNT = 3;
     for (int i = 0; i < CONNECTION_COUNT; i++) {
@@ -106,10 +104,9 @@ public class Issue1160Test {
 
   @Test(timeout = 5000)
   public void fatalErrorShallNotBeHandledByServer() throws Exception {
-    int port = SocketUtil.getAvailablePort();
 
     final CountDownLatch countServerDownLatch = new CountDownLatch(1);
-    WebSocketServer server = new WebSocketServer(new InetSocketAddress(port)) {
+    WebSocketServer server = new WebSocketServer(new InetSocketAddress(0)) {
       @Override
       public void onOpen(WebSocket conn, ClientHandshake handshake) {
       }
@@ -144,7 +141,7 @@ public class Issue1160Test {
     server.start();
     countServerStart.await();
 
-    URI uri = new URI("ws://localhost:" + port);
+    URI uri = new URI("ws://localhost:" + server.getPort());
 
     CountDownLatch countClientDownLatch = new CountDownLatch(1);
     WebSocketClient client = new TestClient(uri, countClientDownLatch);

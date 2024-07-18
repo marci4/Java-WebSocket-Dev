@@ -6,7 +6,6 @@ import java.util.Set;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
-import org.java_websocket.util.SocketUtil;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -17,7 +16,7 @@ public class Issue834Test {
 
     Set<Thread> threadSet1 = Thread.getAllStackTraces().keySet();
 
-    new WebSocketServer(new InetSocketAddress(SocketUtil.getAvailablePort())) {
+    new WebSocketServer(new InetSocketAddress(0)) {
       @Override
       public void onOpen(WebSocket conn, ClientHandshake handshake) {
       }

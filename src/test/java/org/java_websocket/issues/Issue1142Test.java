@@ -22,7 +22,6 @@ import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.server.DefaultSSLWebSocketServerFactory;
 import org.java_websocket.server.WebSocketServer;
 import org.java_websocket.util.SSLContextUtil;
-import org.java_websocket.util.SocketUtil;
 import org.junit.Test;
 
 public class Issue1142Test {
@@ -32,13 +31,14 @@ public class Issue1142Test {
   @Test(timeout = 4000)
   public void testWithoutSSLSession()
       throws IOException, URISyntaxException, InterruptedException {
-    int port = SocketUtil.getAvailablePort();
-    final CountDownLatch countServerDownLatch = new CountDownLatch(1);
-    final WebSocketClient webSocket = new WebSocketClient(new URI("ws://localhost:" + port)) {
+    final CountDownLatch serverStarted = new CountDownLatch(1);
+
+    WebSocketServer server = new MyWebSocketServer(0, serverStarted);
+    server.start();
+    serverStarted.await();
+    final WebSocketClient webSocket = new WebSocketClient(new URI("ws://localhost:" + server.getPort())) {
       @Override
-      public void onOpen(ServerHandshake handshakedata) {
-        countServerDownLatch.countDown();
-      }
+      public void onOpen(ServerHandshake handshakedata) {}
 
       @Override
       public void onMessage(String message) {
@@ -52,9 +52,6 @@ public class Issue1142Test {
       public void onError(Exception ex) {
       }
     };
-    WebSocketServer server = new MyWebSocketServer(port, countServerDownLatch);
-    server.start();
-    countServerDownLatch.await();
     webSocket.connectBlocking();
     assertFalse(webSocket.hasSSLSupport());
     try {
@@ -69,12 +66,18 @@ public class Issue1142Test {
   @Test(timeout = 4000)
   public void testWithSSLSession()
       throws IOException, URISyntaxException, KeyStoreException, NoSuchAlgorithmException, KeyManagementException, UnrecoverableKeyException, CertificateException, InterruptedException {
-    int port = SocketUtil.getAvailablePort();
     final CountDownLatch countServerDownLatch = new CountDownLatch(1);
-    final WebSocketClient webSocket = new WebSocketClient(new URI("wss://localhost:" + port)) {
+    WebSocketServer server = new MyWebSocketServer(0, countServerDownLatch);
+    SSLContext sslContext = SSLContextUtil.getContext();
+
+    server.setWebSocketFactory(new DefaultSSLWebSocketServerFactory(sslContext));
+
+    server.start();
+    countServerDownLatch.await();
+
+    final WebSocketClient webSocket = new WebSocketClient(new URI("wss://localhost:" + server.getPort())) {
       @Override
       public void onOpen(ServerHandshake handshakedata) {
-        countServerDownLatch.countDown();
       }
 
       @Override
@@ -89,13 +92,7 @@ public class Issue1142Test {
       public void onError(Exception ex) {
       }
     };
-    WebSocketServer server = new MyWebSocketServer(port, countServerDownLatch);
-    SSLContext sslContext = SSLContextUtil.getContext();
-
-    server.setWebSocketFactory(new DefaultSSLWebSocketServerFactory(sslContext));
     webSocket.setSocketFactory(sslContext.getSocketFactory());
-    server.start();
-    countServerDownLatch.await();
     webSocket.connectBlocking();
     assertTrue(webSocket.hasSSLSupport());
     assertNotNull(webSocket.getSSLSession());
@@ -105,7 +102,6 @@ public class Issue1142Test {
   private static class MyWebSocketServer extends WebSocketServer {
 
     private final CountDownLatch countServerLatch;
-
 
     public MyWebSocketServer(int port, CountDownLatch serverDownLatch) {
       super(new InetSocketAddress(port));

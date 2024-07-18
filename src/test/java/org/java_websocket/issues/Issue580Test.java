@@ -36,7 +36,6 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.server.WebSocketServer;
-import org.java_websocket.util.SocketUtil;
 import org.java_websocket.util.ThreadCheck;
 import org.junit.Rule;
 import org.junit.Test;
@@ -57,8 +56,7 @@ public class Issue580Test {
 
   private void runTestScenario(boolean closeBlocking) throws Exception {
     final CountDownLatch countServerDownLatch = new CountDownLatch(1);
-    int port = SocketUtil.getAvailablePort();
-    WebSocketServer ws = new WebSocketServer(new InetSocketAddress(port)) {
+    WebSocketServer ws = new WebSocketServer(new InetSocketAddress(0)) {
       @Override
       public void onOpen(WebSocket conn, ClientHandshake handshake) {
 
@@ -86,7 +84,7 @@ public class Issue580Test {
     };
     ws.start();
     countServerDownLatch.await();
-    WebSocketClient clt = new WebSocketClient(new URI("ws://localhost:" + port)) {
+    WebSocketClient clt = new WebSocketClient(new URI("ws://localhost:" + ws.getPort())) {
       @Override
       public void onOpen(ServerHandshake handshakedata) {
 

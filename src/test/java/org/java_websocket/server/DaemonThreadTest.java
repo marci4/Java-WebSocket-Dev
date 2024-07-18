@@ -1,14 +1,11 @@
 package org.java_websocket.server;
 
-import java.io.IOException;
 import java.net.*;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.*;
 import org.java_websocket.client.*;
-import org.java_websocket.server.WebSocketServer;
-import org.java_websocket.util.SocketUtil;
 import org.junit.Test;
 import static org.junit.Assert.assertTrue;
 

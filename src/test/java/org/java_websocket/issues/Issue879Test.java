@@ -44,7 +44,6 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.server.WebSocketServer;
-import org.java_websocket.util.SocketUtil;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -103,12 +102,12 @@ public class Issue879Test {
         countDownLatch.countDown();
       }
     }
-    int port = SocketUtil.getAvailablePort();
-    SimpleServer serverA = new SimpleServer(new InetSocketAddress(port));
-    SimpleServer serverB = new SimpleServer(new InetSocketAddress(port));
+    SimpleServer serverA = new SimpleServer(new InetSocketAddress(0));
+
     serverA.start();
     countDownLatch.await();
-    List<WebSocketClient> clients = startNewConnections(numberOfConnections, port);
+    SimpleServer serverB = new SimpleServer(new InetSocketAddress(serverA.getPort()));
+    List<WebSocketClient> clients = startNewConnections(numberOfConnections, serverA.getPort());
     Thread.sleep(100);
     int numberOfConnected = 0;
     for (WebSocketClient client : clients) {
