@@ -19,7 +19,7 @@ public class DaemonThreadTest {
 
     Set<Thread> threadSet1 = Thread.getAllStackTraces().keySet();
 
-    WebSocketServer server = new WebSocketServer(new InetSocketAddress(SocketUtil.getAvailablePort()), 16) {
+    WebSocketServer server = new WebSocketServer(new InetSocketAddress(0), 16) {
       @Override
       public void onOpen(WebSocket conn, ClientHandshake handshake) {}
       @Override
@@ -36,6 +36,9 @@ public class DaemonThreadTest {
     server.setDaemon(true);
     server.start();
 
+    // Sleep to ensure that the server socket is bound
+    Thread.sleep(1000);
+
     WebSocketClient client = new WebSocketClient(URI.create("ws://localhost:" + server.getPort())) {
       @Override
       public void onOpen(ServerHandshake handshake) { }
@@ -49,6 +52,7 @@ public class DaemonThreadTest {
     client.setDaemon(false);
     client.setDaemon(true);
     client.connectBlocking();
+    client.send("hugo");
     Set<Thread> threadSet2 = Thread.getAllStackTraces().keySet();
     threadSet2.removeAll(threadSet1);
 
