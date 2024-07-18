@@ -18,6 +18,7 @@ public class DaemonThreadTest {
   public void test_AllCreatedThreadsAreDaemon() throws Throwable {
 
     Set<Thread> threadSet1 = Thread.getAllStackTraces().keySet();
+    CountDownLatch serverStartLatch = new CountDownLatch(1);
 
     WebSocketServer server = new WebSocketServer(new InetSocketAddress(0), 16) {
       @Override
@@ -29,15 +30,13 @@ public class DaemonThreadTest {
       @Override
       public void onError(WebSocket conn, Exception ex) {}
       @Override
-      public void onStart() {}
+      public void onStart() {serverStartLatch.countDown();}
     };
     server.setDaemon(true);
     server.setDaemon(false);
     server.setDaemon(true);
     server.start();
-
-    // Sleep to ensure that the server socket is bound
-    Thread.sleep(1000);
+    serverStartLatch.await();
 
     WebSocketClient client = new WebSocketClient(URI.create("ws://localhost:" + server.getPort())) {
       @Override
