@@ -7,15 +7,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        version: [8, 11, 17,21,25]
+        version: [8, 11, 17,21]
     steps:
       - uses: actions/checkout@v3
-      - name: Set up JDK
+      - name: Set up JDK ${{ matrix.version }}
         uses: actions/setup-java@v3
         with:
           java-version: ${{ matrix.version }}
           distribution: 'temurin'
-      - name: Build
+      - name: Build JDK ${{ matrix.version }}
         run: mvn -DskipTests package --file pom.xml
 
   Test:
@@ -23,13 +23,13 @@ jobs:
     timeout-minutes: 15
     strategy:
       matrix:
-        version: [8, 11, 17,21,25]
+        version: [8, 11, 17,21]
     steps:
       - uses: actions/checkout@v3
-      - name: Set up JDK 17
+      - name: Set up JDK ${{ matrix.version }}
         uses: actions/setup-java@v3
         with:
           java-version: ${{ matrix.version }}
           distribution: 'temurin'
-      - name: Test
+      - name: Test JDK ${{ matrix.version }}
         run: mvn test --file pom.xml
