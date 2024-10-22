@@ -101,7 +101,7 @@
                                 <goal>compile</goal>
                             </goals>
                             <configuration>
-                                <release>7</release>
+                                <release>8</release>
                             </configuration>
                         </execution>
 
