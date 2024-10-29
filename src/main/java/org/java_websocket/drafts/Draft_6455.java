@@ -403,7 +403,7 @@ public class Draft_6455 extends Draft {
     StringBuilder requestedExtensions = new StringBuilder();
     for (IExtension knownExtension : knownExtensions) {
       if (knownExtension.getProvidedExtensionAsClient() != null
-          && knownExtension.getProvidedExtensionAsClient().length() != 0) {
+          && !knownExtension.getProvidedExtensionAsClient().isEmpty()) {
         if (requestedExtensions.length() > 0) {
           requestedExtensions.append(", ");
         }
@@ -415,7 +415,7 @@ public class Draft_6455 extends Draft {
     }
     StringBuilder requestedProtocols = new StringBuilder();
     for (IProtocol knownProtocol : knownProtocols) {
-      if (knownProtocol.getProvidedProtocol().length() != 0) {
+      if (!knownProtocol.getProvidedProtocol().isEmpty()) {
         if (requestedProtocols.length() > 0) {
           requestedProtocols.append(", ");
         }
@@ -439,14 +439,13 @@ public class Draft_6455 extends Draft {
       throw new InvalidHandshakeException("missing Sec-WebSocket-Key");
     }
     response.put(SEC_WEB_SOCKET_ACCEPT, generateFinalKey(seckey));
-    if (getExtension().getProvidedExtensionAsServer().length() != 0) {
+    if (!getExtension().getProvidedExtensionAsServer().isEmpty()) {
       response.put(SEC_WEB_SOCKET_EXTENSIONS, getExtension().getProvidedExtensionAsServer());
     }
-    if (getProtocol() != null && getProtocol().getProvidedProtocol().length() != 0) {
+    if (getProtocol() != null && !getProtocol().getProvidedProtocol().isEmpty()) {
       response.put(SEC_WEB_SOCKET_PROTOCOL, getProtocol().getProvidedProtocol());
     }
     response.setHttpStatusMessage("Web Socket Protocol Handshake");
-    response.put("Server", "TooTallNate Java-WebSocket");
     response.put("Date", getServerTime());
     return response;
   }

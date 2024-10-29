@@ -52,11 +52,7 @@ import org.java_websocket.exceptions.WebsocketNotConnectedException;
 import org.java_websocket.framing.CloseFrame;
 import org.java_websocket.framing.Framedata;
 import org.java_websocket.framing.PingFrame;
-import org.java_websocket.handshake.ClientHandshake;
-import org.java_websocket.handshake.ClientHandshakeBuilder;
-import org.java_websocket.handshake.Handshakedata;
-import org.java_websocket.handshake.ServerHandshake;
-import org.java_websocket.handshake.ServerHandshakeBuilder;
+import org.java_websocket.handshake.*;
 import org.java_websocket.interfaces.ISSLChannel;
 import org.java_websocket.protocols.IProtocol;
 import org.java_websocket.server.WebSocketServer.WebSocketWorker;
@@ -175,6 +171,13 @@ public class WebSocketImpl implements WebSocket {
   private Object attachment;
 
   /**
+   * Provide the server information in the response
+   *
+   * @since 1.6.0
+   */
+  private boolean provideServerInformation = false;
+
+  /**
    * Creates a websocket with server role
    *
    * @param listener The listener for this instance
@@ -211,6 +214,24 @@ public class WebSocketImpl implements WebSocket {
       this.draft = draft.copyInstance();
     }
   }
+
+  /**
+   * Should the response contain server information
+   *
+   * @return If true, the response will contain a Server Header field
+   */
+  public boolean shouldProvideServerInformation() {
+    return provideServerInformation;
+  }
+
+  /**
+   * Set, if the response should contain Server v field
+   * @param provideServerInformation if True, the Server Header field will be included
+   */
+  public void setProvideServerInformation(boolean provideServerInformation) {
+    this.provideServerInformation = provideServerInformation;
+  }
+
 
   /**
    * Method to decode the provided ByteBuffer
@@ -297,8 +318,8 @@ public class WebSocketImpl implements WebSocket {
                     closeConnectionDueToInternalServerError(e);
                     return false;
                   }
-                  write(d.createHandshake(
-                      d.postProcessHandshakeResponseAsServer(handshake, response)));
+
+                  write(d.createHandshake(buildServerHandshake( d, handshake, response)));
                   draft = d;
                   open(handshake);
                   return true;
@@ -388,6 +409,14 @@ public class WebSocketImpl implements WebSocket {
     return false;
   }
 
+  private Handshakedata buildServerHandshake(Draft d, ClientHandshake handshake, ServerHandshakeBuilder response) throws InvalidHandshakeException {
+    HandshakeBuilder handshakeBuilder = d.postProcessHandshakeResponseAsServer(handshake, response);
+    if (shouldProvideServerInformation()) {
+      response.put("Server", "TooTallNate Java-WebSocket");
+    }
+    return handshakeBuilder;
+  }
+
   private void decodeFrames(ByteBuffer socketBuffer) {
     List<Framedata> frames;
     try {
@@ -454,10 +483,9 @@ public class WebSocketImpl implements WebSocket {
       default:
         errorCodeDescription = "500 Internal Server Error";
     }
-    return ByteBuffer.wrap(Charsetfunctions.asciiBytes("HTTP/1.1 " + errorCodeDescription
-        + "\r\nContent-Type: text/html\r\nServer: TooTallNate Java-WebSocket\r\nContent-Length: "
-        + (48 + errorCodeDescription.length()) + "\r\n\r\n<html><head></head><body><h1>"
-        + errorCodeDescription + "</h1></body></html>"));
+    String response= String.format("HTTP/1.1 %s \r\nContent-Type: text/html\r\n%sContent-Length: %d\r\n\r\n<html><head></head><body><h1>%s</h1></body></html>",
+            errorCodeDescription, shouldProvideServerInformation()?"Server: TooTallNate Java-WebSocket\r\n":"", errorCodeDescription.length()+48, errorCodeDescription);
+    return ByteBuffer.wrap(Charsetfunctions.asciiBytes(response));
   }
 
   public synchronized void close(int code, String message, boolean remote) {
